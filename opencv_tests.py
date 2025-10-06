@@ -21,12 +21,8 @@ if img is None:
     sys.exit("Could not read the image.")
  
 # Wyświetl plik, poczekaj aż użytkownik kliknie
-cv.imshow("Display window", img)
+cv.imshow("All colors", img)
 k = cv.waitKey(0)
- 
-# Zapisz, jeśli użytkownik kliknął "s"
-if k == ord("s"):
-    cv.imwrite("results/galaxy.png", img)
 
 
 #######################################################
@@ -64,7 +60,7 @@ print(blue)
 # skopiuj i wklej jakiś obszar w konkretne miejsce
 
 piece = img[180:240, 180:240]
-img[100:160, 100:160] = piece
+#img[100:160, 100:160] = piece
 
 # pobierz konkretny kolor
 # r = img[:,:,2]
@@ -72,11 +68,25 @@ img[100:160, 100:160] = piece
 # podziel obraz na trzy oddzielne kanały (wolniejsze od powyższego)
 b,g,r = cv.split(img)
 
-cv.imshow("Display window", r)
+cv.imshow("Only red", r)
 k = cv.waitKey(0)
 
-cv.imshow("Display window", g)
+cv.imshow("Only green", g)
 k = cv.waitKey(0)
 
-cv.imshow("Display window", b)
+cv.imshow("Only blue", b)
 k = cv.waitKey(0)
+
+#######################################################
+# Zmiana skali kolorów z BGR na skalę szarości        #
+#######################################################
+
+# Zmień ten obraz na skalę szarości
+gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+cv.imshow("Grayscale", gray)
+k = cv.waitKey(0)
+
+# Zapisz, jeśli użytkownik kliknął "s"
+if k == ord("s"):
+    cv.imwrite("results/galaxy.png", gray)
