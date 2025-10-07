@@ -23,8 +23,8 @@ if img is None:
     sys.exit("Could not read the image.")
  
 # Wyświetl plik, poczekaj aż użytkownik kliknie
-cv.imshow("All colors", img)
-k = cv.waitKey(0)
+# cv.imshow("All colors", img)
+# k = cv.waitKey(0)
 
 # Aby odczytać coś od razu jako grayscale, dodać flagę cv.IMREAD_GRAYSCALE
 
@@ -36,13 +36,13 @@ k = cv.waitKey(0)
 # format [ B G R]
 # dla czarnobiałych wychodzi tylko jasność piksela
 
-px = img[100,100]
-print( px )
+# px = img[100,100]
+# print( px )
 
 # pobierz i wyświetl intensywność niebieskiego piksela
 
-blue = img[100,100,0]
-print(blue)
+# blue = img[100,100,0]
+# print(blue)
 
 # # zmień wartość piksela na zadaną
 # img[100,100] = [255,255,255]
@@ -88,12 +88,12 @@ b,g,r = cv.split(img)
 gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 # alternatywnie:
 gray = cv.imread(filename, cv.IMREAD_GRAYSCALE)
-cv.imshow("Grayscale", gray)
-k = cv.waitKey(0)
+# cv.imshow("Grayscale", gray)
+# k = cv.waitKey(0)
 
-# Zapisz, jeśli użytkownik kliknął "s"
-if k == ord("s"):
-    cv.imwrite("results/galaxy.png", gray)
+# # Zapisz, jeśli użytkownik kliknął "s"
+# if k == ord("s"):
+#     cv.imwrite("results/galaxy.png", gray)
 
 #######################################################
 # Progowanie na różne sposoby                         #
@@ -116,11 +116,11 @@ titles = ['Original Image', 'Global Thresholding (v = 32)',
             'Adaptive Mean Thresholding', 'Adaptive Gaussian Thresholding']
 images = [gray, th1, th2, th3]
 
-for i in range(4):
-    plt.subplot(2,2,i+1),plt.imshow(images[i],'gray')
-    plt.title(titles[i])
-    plt.xticks([]),plt.yticks([])
-plt.show()
+# for i in range(4):
+#     plt.subplot(2,2,i+1),plt.imshow(images[i],'gray')
+#     plt.title(titles[i])
+#     plt.xticks([]),plt.yticks([])
+# plt.show()
 
 #######################################################
 # Funkcja do zrobienia histogramu i pobrania detali   #
@@ -130,30 +130,30 @@ plt.show()
 
 hist = cv.calcHist([gray], [0], None, [256], [0, 256])
 
-plt.figure(figsize=(12, 5))
+# plt.figure(figsize=(12, 5))
 
-# Histogram
-plt.subplot(1, 2, 1)
-plt.plot(hist)
-plt.title('Pixel Intensity Histogram')
-plt.xlabel('Pixel Intensity')
-plt.ylabel('Number of Pixels')
+# # Histogram
+# plt.subplot(1, 2, 1)
+# plt.plot(hist)
+# plt.title('Pixel Intensity Histogram')
+# plt.xlabel('Pixel Intensity')
+# plt.ylabel('Number of Pixels')
 
-# Puste i pełne kubełki jako czerwone kropki
-plt.subplot(1, 2, 2)
-empty_mask = (hist.flatten() == 0)
-plt.plot(empty_mask, 'ro', markersize=2)
-plt.title('Empty Bins (Red Dots)')
-plt.xlabel('Bin Index')
-plt.ylabel('Empty (1) / Non-empty (0)')
-plt.yticks([0, 1])
+# # Puste i pełne kubełki jako czerwone kropki
+# plt.subplot(1, 2, 2)
+# empty_mask = (hist.flatten() == 0)
+# plt.plot(empty_mask, 'ro', markersize=2)
+# plt.title('Empty Bins (Red Dots)')
+# plt.xlabel('Bin Index')
+# plt.ylabel('Empty (1) / Non-empty (0)')
+# plt.yticks([0, 1])
 
-plt.tight_layout()
-plt.show()
+# plt.tight_layout()
+# plt.show()
 
 #których konkretnie brakuje? Wychodzi na to, że powyżej 227 (włącznie) nie ma żadnych pixeli
 missing_intensities = np.where(hist.flatten() == 0)[0]
-print(f"Missing intensity values: {missing_intensities}")
+# print(f"Missing intensity values: {missing_intensities}")
 
 #######################################################
 # NORMALIZACJA OBRAZKA                                #
@@ -166,5 +166,44 @@ min_intensity = np.min(gray)
 #cv.normalize(obraz, drugi obraz, min, max, typ normalizacji)
 normalized_gray = cv.normalize(gray, None, 0, 255, cv.NORM_MINMAX)
 
-cv.imshow("Normalized grayscale", normalized_gray)
+# cv.imshow("Normalized grayscale", normalized_gray)
+# k = cv.waitKey(0)
+
+#######################################################
+# Filtracja                                           #
+#######################################################
+
+
+#filtr uśredniający (averaging) - bierze średnią z x/x pixeli i wstawia ją do środkowego
+
+kernel = np.ones((5,5),np.float32)/25
+
+#filtr uśredniający, gaussowski i medianowy
+dst = cv.filter2D(img,-1,kernel)
+gauss = cv.GaussianBlur(img,(5,5),0)
+median = cv.medianBlur(img,5)
+
+titles = ['Original Image', 'Averaging',
+            'Gaussian', 'Median']
+images = [img, dst, gauss, median]
+
+# for i in range(4):
+#     plt.subplot(2,2,i+1),plt.imshow(images[i],'gray')
+#     plt.title(titles[i])
+#     plt.xticks([]),plt.yticks([])
+# plt.show()
+
+#i teraz na czarnobiałym, znormalizowane
+
+dst = cv.filter2D(normalized_gray,-1,kernel)
+gauss = cv.GaussianBlur(normalized_gray,(5,5),0)
+median = cv.medianBlur(normalized_gray,5)
+bilateral = cv.bilateralFilter(normalized_gray,7,75,75)
+
+titles = ['Original Grayscale Image', 'Averaging',
+            'Gaussian', 'Median', 'Bilateral']
+images = [normalized_gray, dst, gauss, median, bilateral]
+
+for i in range(5):
+    cv.imshow(titles[i], images[i])
 k = cv.waitKey(0)
