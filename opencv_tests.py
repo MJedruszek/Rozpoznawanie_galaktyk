@@ -2,8 +2,8 @@
 # Potrzebne:
 # +(potencjalnie) zmiana rozmiaru obrazu, niepotrzebne, każdy obraz ma 424x424
 # +normalizacja (jeśli część zakresu jest nieużywana, użyjmy jej! automat robi za nas)
-# -filtracja (typ do wyboru później, wiedzieć tylko jak to się robi)
-# -progowanie (podobnie, typ do wyboru później, na razie tylko jak)
+# +filtracja (typ do wyboru później, wiedzieć tylko jak to się robi)
+# +progowanie (podobnie, typ do wyboru później, na razie tylko jak)
 # -detekcja krawędzi (j.w.)
 
 import numpy as np
