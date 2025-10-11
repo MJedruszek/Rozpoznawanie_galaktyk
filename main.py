@@ -8,6 +8,7 @@ from PIL import Image
 import torchvision.transforms as transforms
 
 from RCF.models import RCF
+from CATS.models import Network
 #Krok 0: wczytaj obraz w skali szarości
 
 filename = "images_gz2/images/8500.jpg"
@@ -123,8 +124,88 @@ rcf_raw = rcf_edge_detection(filename)
 
 rcf = cv.normalize(rcf_raw, None, 0, 255, cv.NORM_MINMAX)
 
+
+#cats
+
+class Config:
+    def __init__(self):
+        self.pretrained = "CATS/vgg16.pth"  # Path to VGG16 pretrained weights if needed
+        self.resume = "CATS/bsds.pth"  # Path to your CATS .pth file
+        self.gpu = False  # Since you're using CPU
+        self.num_classes = 1
+
+def load_cats_model(pth_path):
+    """
+    Load CATS model with weights
+    """
+    config = Config()
+    config.resume = pth_path
+    
+    # Initialize model
+    model = Network(config)
+    
+    # Load checkpoint
+    checkpoint = torch.load(pth_path, map_location='cpu')
+    
+    # Handle different checkpoint formats
+    if 'state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['state_dict'])
+    elif 'model' in checkpoint:
+        model.load_state_dict(checkpoint['model'])
+    else:
+        model.load_state_dict(checkpoint)
+    
+    model.eval()
+    print("✓ CATS model loaded successfully!")
+    return model
+
+def cats_edge_detection(model):
+    """
+    Perform edge detection using CATS model
+    """
+    device = torch.device('cpu')
+    model.to(device)
+    
+    # Load and preprocess image
+    image = Image.open(filename).convert('RGB')
+    original_size = image.size
+    
+    # CATS typically expects ImageNet normalization
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+                           std=[0.229, 0.224, 0.225])
+    ])
+    
+    input_tensor = transform(image).unsqueeze(0).to(device)
+    
+    # Inference
+    with torch.no_grad():
+        outputs = model(input_tensor)
+        
+        # CATS returns multiple outputs: [so1, so2, so3, so4, so5, fuse]
+        # The final fused output is usually the last one
+        if isinstance(outputs, list) and len(outputs) > 0:
+            # Try the fused output (last one)
+            fuse_output = outputs[-1]
+            edge_map = fuse_output[0, 0].cpu().numpy()  # Get first channel of first batch
+        else:
+            edge_map = outputs[0, 0].cpu().numpy()
+    
+    # Convert to 0-255
+    edge_map = (edge_map * 255).astype(np.uint8)
+    
+    return edge_map
+
+cats_model = load_cats_model("CATS/bsds.pth")
+
+cats_raw = cats_edge_detection(cats_model)
+cats = cv.normalize(cats_raw, None, 0, 255, cv.NORM_MINMAX)
+
 cv.imshow("Input", img_gray)
-cv.imshow("HED", hed)
 cv.imshow("Canny", edges_canny)
+cv.imshow("HED", hed)
 cv.imshow("RCF", rcf)
+cv.imshow("CATS", cats)
 cv.waitKey(0)
+
