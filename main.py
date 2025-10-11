@@ -11,7 +11,7 @@ from RCF.models import RCF
 from CATS.models import Network
 #Krok 0: wczytaj obraz w skali szarości
 
-filename = "images_gz2/images/8500.jpg"
+filename = "images_gz2/images/8600.jpg"
 img_gray = cv.imread(filename, cv.IMREAD_GRAYSCALE)
 #ten sam, ale kolorowy dla heda
 img_color = cv.imread(filename)
@@ -156,7 +156,6 @@ def load_cats_model(pth_path):
         model.load_state_dict(checkpoint)
     
     model.eval()
-    print("✓ CATS model loaded successfully!")
     return model
 
 def cats_edge_detection(model):
@@ -203,9 +202,17 @@ cats_raw = cats_edge_detection(cats_model)
 cats = cv.normalize(cats_raw, None, 0, 255, cv.NORM_MINMAX)
 
 cv.imshow("Input", img_gray)
-cv.imshow("Canny", edges_canny)
+
 cv.imshow("HED", hed)
 cv.imshow("RCF", rcf)
 cv.imshow("CATS", cats)
 cv.waitKey(0)
 
+_, hed_binary = cv.threshold(hed, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+_, rcf_binary = cv.threshold(rcf, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+_, cats_binary = cv.threshold(cats, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+cv.imshow("HED binary", hed_binary)
+cv.imshow("RCF binary", rcf_binary)
+cv.imshow("CATS binary", cats_binary)
+cv.imshow("Canny", edges_canny)
+cv.waitKey(0)
