@@ -6,3 +6,5 @@ images_gz2.zip
 /results
 /RCF/__pycache__
 /CATS/__pycache__
+/test_data
+/train_data

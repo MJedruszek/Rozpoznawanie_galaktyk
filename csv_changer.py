@@ -1,5 +1,4 @@
 import pandas as pd
-import io
 
 # size = 10000
 hart16 = pd.read_csv('gz2_hart16.csv', usecols=['dr7objid', 't04_spiral_a08_spiral_flag', 't04_spiral_a09_no_spiral_flag', 't08_odd_feature_a20_lens_or_arc_flag', 't08_odd_feature_a22_irregular_flag']).dropna()
