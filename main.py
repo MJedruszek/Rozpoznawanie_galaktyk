@@ -11,10 +11,12 @@ from RCF.models import RCF
 from CATS.models import Network
 
 
-filename = "images_gz2/images/8600.jpg"
+# filename = "images_gz2/images/70000.jpg"
+filename = "test.png"
 img_gray = cv.imread(filename, cv.IMREAD_GRAYSCALE)
 #ten sam, ale kolorowy dla heda
 img_color = cv.imread(filename)
+img_color = cv.filter2D(img_color, -1, np.ones((5,5),np.float32)/25)
 
 # Zwykły detektor Canny
 edges_canny = cv.Canny(img_gray, 20,100)
@@ -24,16 +26,47 @@ W = 424
 H = 424
 
 #stwórz sieć HED
+# net_hed = cv.dnn.readNetFromCaffe("HED/deploy.prototxt", "HED/hed_pretrained_bsds.caffemodel")
+
+# #stwórz blob ze zdjęcia
+# blob = cv.dnn.blobFromImage(img_color, scalefactor=1.0, size=(W, H),swapRB=False, crop=False)
+# #przetwórz i zwróć
+# net_hed.setInput(blob)
+# hed_raw = net_hed.forward()
+# hed_raw = cv.resize(hed_raw[0, 0], (W, H))
+# hed_raw = (255 * hed_raw).astype("uint8")
+# hed = cv.normalize(hed_raw, None, 0, 255, cv.NORM_MINMAX)
+
 net_hed = cv.dnn.readNetFromCaffe("HED/deploy.prototxt", "HED/hed_pretrained_bsds.caffemodel")
 
-#stwórz blob ze zdjęcia
-blob = cv.dnn.blobFromImage(img_color, scalefactor=1.0, size=(W, H),swapRB=False, crop=False)
-#przetwórz i zwróć
+# Get the names of all output layers
+layer_names = net_hed.getLayerNames()
+try:
+    # OpenCV 4.x
+    output_layers = [layer_names[i - 1] for i in net_hed.getUnconnectedOutLayers()]
+except:
+    # OpenCV 3.x
+    output_layers = [layer_names[i[0] - 1] for i in net_hed.getUnconnectedOutLayers()]
+
+print("Output layers:", output_layers)
+
+blob = cv.dnn.blobFromImage(img_color, scalefactor=1.0, size=(W, H), swapRB=False, crop=False)
 net_hed.setInput(blob)
-hed_raw = net_hed.forward()
-hed_raw = cv.resize(hed_raw[0, 0], (W, H))
-hed_raw = (255 * hed_raw).astype("uint8")
-hed = cv.normalize(hed_raw, None, 0, 255, cv.NORM_MINMAX)
+
+# Forward pass through all output layers
+hed_outputs = net_hed.forward(output_layers)
+
+# Process each output
+hed = []
+for i, output in enumerate(hed_outputs):    
+    # Reshape and resize to original image dimensions
+    hed_raw = output[0, 0]  # Get the first channel of first image in batch
+    hed_raw = cv.resize(hed_raw, (W, H))
+    hed_raw = (255 * hed_raw).astype("uint8")
+    hed_normalized = cv.normalize(hed_raw, None, 0, 255, cv.NORM_MINMAX)
+    
+    hed.append(hed_normalized)
+    print(f"HED output {i} processed - shape: {hed_normalized.shape}")
 
 
 #RCF
@@ -79,7 +112,7 @@ def rcf_edge_detection(image_path):
         
         # Pobieramy tylko ostatnie z wyjść
         if isinstance(outputs, (list, tuple)):
-            edge_map = outputs[-1] 
+            edge_map = outputs[1] 
         else:
             edge_map = outputs
         
@@ -147,7 +180,7 @@ def cats_edge_detection(model):
         
         # Używamy tylko ostatniego wyniku
         if isinstance(outputs, list) and len(outputs) > 0:
-            fuse_output = outputs[-1]
+            fuse_output = outputs[0]
             edge_map = fuse_output[0, 0].cpu().numpy()
         else:
             edge_map = outputs[0, 0].cpu().numpy()
@@ -164,15 +197,33 @@ cats = cv.normalize(cats_raw, None, 0, 255, cv.NORM_MINMAX)
 #Wyświetl wyniki, najpierw oryginał i trzy zaawansowane, później Canny oraz sprogowane trzy zaawansowane
 cv.imshow("Input", img_gray)
 
-cv.imshow("HED", hed)
+cv.imshow("HED 0", hed[0])
+cv.imshow("HED 1", hed[1])
+cv.imshow("HED 2", hed[2])
+cv.imshow("HED 3", hed[3])
+cv.imshow("HED 4", hed[4])
+cv.imshow("HED 5", hed[5])
+
 cv.imshow("RCF", rcf)
 cv.imshow("CATS", cats)
 cv.waitKey(0)
 
-_, hed_binary = cv.threshold(hed, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+_, hed_binary_0 = cv.threshold(hed[0], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+_, hed_binary_1 = cv.threshold(hed[1], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+_, hed_binary_2 = cv.threshold(hed[2], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+_, hed_binary_3 = cv.threshold(hed[3], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+_, hed_binary_4 = cv.threshold(hed[4], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+_, hed_binary_5 = cv.threshold(hed[5], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+
 _, rcf_binary = cv.threshold(rcf, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
 _, cats_binary = cv.threshold(cats, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-cv.imshow("HED binary", hed_binary)
+cv.imshow("HED binary 0", hed_binary_0)
+cv.imshow("HED binary 1", hed_binary_1)
+cv.imshow("HED binary 2", hed_binary_2)
+cv.imshow("HED binary 3", hed_binary_3)
+cv.imshow("HED binary 4", hed_binary_4)
+cv.imshow("HED binary 5", hed_binary_5)
+
 cv.imshow("RCF binary", rcf_binary)
 cv.imshow("CATS binary", cats_binary)
 cv.imshow("Canny", edges_canny)
