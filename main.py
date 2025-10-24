@@ -10,9 +10,8 @@ import torchvision.transforms as transforms
 from RCF.models import RCF
 from CATS.models import Network
 
-
-# filename = "images_gz2/images/70000.jpg"
-filename = "test.png"
+# filename = "test.png"
+filename = "images_gz2/images/700.jpg"
 img_gray = cv.imread(filename, cv.IMREAD_GRAYSCALE)
 #ten sam, ale kolorowy dla heda
 img_color = cv.imread(filename)
@@ -22,12 +21,43 @@ img_color = cv.filter2D(img_color, -1, np.ones((5,5),np.float32)/25)
 edges_canny = cv.Canny(img_gray, 20,100)
 
 #HED
-W = 424
-H = 424
+
+def init_hed():
+    net_hed = cv.dnn.readNetFromCaffe("HED/deploy.prototxt", "HED/hed_pretrained_bsds.caffemodel")
+    # Pobierz nazwy wszystkich warstw, potrzebne do wybrania konkretnej
+    layer_names = net_hed.getLayerNames()
+    try:
+        # OpenCV 4.x
+        output_layers = [layer_names[i - 1] for i in net_hed.getUnconnectedOutLayers()]
+    except:
+        # OpenCV 3.x
+        output_layers = [layer_names[i[0] - 1] for i in net_hed.getUnconnectedOutLayers()]
+    
+    return net_hed, output_layers
+
+def use_hed(net, layers, img):
+    H, W, channels = img.shape
+    img_resized = cv.resize(img, (512, 512))
+    blob = cv.dnn.blobFromImage(img_resized, scalefactor=1.0, size=(512, 512),mean=(104.00698793, 116.66876762, 122.67891434), swapRB=False, crop=False)
+    net.setInput(blob)
+
+    hed_outputs = net.forward(layers)
+
+    # Przetwórz każdy output
+    hed_return = []
+    for i, output in enumerate(hed_outputs):    
+        # Zmień rozmiar
+        hed_raw = output[0,0]  # Get the first channel of first image in batch
+        hed_raw = cv.resize(hed_raw, (W, H), interpolation=cv.INTER_LINEAR)
+        hed_raw = (255 * hed_raw).astype("uint8")
+        hed_normalized = cv.normalize(hed_raw, None, 0, 255, cv.NORM_MINMAX)
+        
+        hed_return.append(hed_normalized)
+
+    return hed_return
 
 #stwórz sieć HED
 # net_hed = cv.dnn.readNetFromCaffe("HED/deploy.prototxt", "HED/hed_pretrained_bsds.caffemodel")
-
 # #stwórz blob ze zdjęcia
 # blob = cv.dnn.blobFromImage(img_color, scalefactor=1.0, size=(W, H),swapRB=False, crop=False)
 # #przetwórz i zwróć
@@ -37,41 +67,9 @@ H = 424
 # hed_raw = (255 * hed_raw).astype("uint8")
 # hed = cv.normalize(hed_raw, None, 0, 255, cv.NORM_MINMAX)
 
-net_hed = cv.dnn.readNetFromCaffe("HED/deploy.prototxt", "HED/hed_pretrained_bsds.caffemodel")
-
-# Get the names of all output layers
-layer_names = net_hed.getLayerNames()
-try:
-    # OpenCV 4.x
-    output_layers = [layer_names[i - 1] for i in net_hed.getUnconnectedOutLayers()]
-except:
-    # OpenCV 3.x
-    output_layers = [layer_names[i[0] - 1] for i in net_hed.getUnconnectedOutLayers()]
-
-print("Output layers:", output_layers)
-
-blob = cv.dnn.blobFromImage(img_color, scalefactor=1.0, size=(W, H), swapRB=False, crop=False)
-net_hed.setInput(blob)
-
-# Forward pass through all output layers
-hed_outputs = net_hed.forward(output_layers)
-
-# Process each output
-hed = []
-for i, output in enumerate(hed_outputs):    
-    # Reshape and resize to original image dimensions
-    hed_raw = output[0, 0]  # Get the first channel of first image in batch
-    hed_raw = cv.resize(hed_raw, (W, H))
-    hed_raw = (255 * hed_raw).astype("uint8")
-    hed_normalized = cv.normalize(hed_raw, None, 0, 255, cv.NORM_MINMAX)
-    
-    hed.append(hed_normalized)
-    print(f"HED output {i} processed - shape: {hed_normalized.shape}")
-
-
 #RCF
 
-def load_rcf_model():
+def init_rcf():
     # Inicjalizacja modelu
     model = RCF()
     
@@ -87,15 +85,14 @@ def load_rcf_model():
     return model
 
 #Właściwa detekcja
-def rcf_edge_detection(image_path):
+def use_rcf(model, img_name):
     # Załaduj model
 
-    model = load_rcf_model()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     
     #pobierz obraz w formacie rgb (CV robi to w formacie BGR)
-    image = Image.open(image_path).convert('RGB')
+    image = Image.open(img_name).convert('RGB')
     original_size = image.size[::-1]  # obróć obraz
     
     transform = transforms.Compose([
@@ -110,7 +107,7 @@ def rcf_edge_detection(image_path):
     with torch.no_grad():
         outputs = model(input_tensor)
         
-        # Pobieramy tylko ostatnie z wyjść
+        # Pobieramy tylko najlepsze z wyjść
         if isinstance(outputs, (list, tuple)):
             edge_map = outputs[1] 
         else:
@@ -121,12 +118,9 @@ def rcf_edge_detection(image_path):
     # Zwróć formę w tym samym rozmiarze, co oryginał
     edge_map = cv.resize(edge_map, (original_size[1], original_size[0]))
     edge_map = (edge_map * 255).astype(np.uint8)
+    edge_map = cv.normalize(edge_map, None, 0, 255, cv.NORM_MINMAX)
     
     return edge_map
-
-rcf_raw = rcf_edge_detection(filename)
-
-rcf = cv.normalize(rcf_raw, None, 0, 255, cv.NORM_MINMAX)
 
 
 #cats
@@ -139,14 +133,13 @@ class Config:
         self.gpu = False  
         self.num_classes = 1
 
-def load_cats_model(pth_path):
+def init_cats():
     
     config = Config()
-    config.resume = pth_path
     
     # Inicjalizacja modelu wraz z wagami
     model = Network(config)
-    checkpoint = torch.load(pth_path, map_location='cpu')
+    checkpoint = torch.load("CATS/bsds.pth", map_location='cpu')
     
     if 'state_dict' in checkpoint:
         model.load_state_dict(checkpoint['state_dict'])
@@ -159,12 +152,12 @@ def load_cats_model(pth_path):
     return model
 
 #Właściwa detekcja krawędzi
-def cats_edge_detection(model):
+def use_cats(model, img_name):
     device = torch.device('cpu')
     model.to(device)
     
     # Załaduj obrazek
-    image = Image.open(filename).convert('RGB')
+    image = Image.open(img_name).convert('RGB')
     
     # Znormalizuj go
     transform = transforms.Compose([
@@ -186,13 +179,17 @@ def cats_edge_detection(model):
             edge_map = outputs[0, 0].cpu().numpy()
     
     edge_map = (edge_map * 255).astype(np.uint8)
-    
+    edge_map = cv.normalize(edge_map, None, 0, 255, cv.NORM_MINMAX)
     return edge_map
 
-cats_model = load_cats_model("CATS/bsds.pth")
+hed_model, hed_layers = init_hed()
+rcf_model = init_rcf()
+cats_model = init_cats()
 
-cats_raw = cats_edge_detection(cats_model)
-cats = cv.normalize(cats_raw, None, 0, 255, cv.NORM_MINMAX)
+hed = []
+hed = use_hed(hed_model, hed_layers, img_color)
+rcf = use_rcf(rcf_model, filename)
+cats = use_cats(cats_model, filename)
 
 #Wyświetl wyniki, najpierw oryginał i trzy zaawansowane, później Canny oraz sprogowane trzy zaawansowane
 cv.imshow("Input", img_gray)
@@ -228,3 +225,16 @@ cv.imshow("RCF binary", rcf_binary)
 cv.imshow("CATS binary", cats_binary)
 cv.imshow("Canny", edges_canny)
 cv.waitKey(0)
+
+# cv.imwrite("results/HED0.png", hed_binary_0)
+# cv.imwrite("results/HED1.png", hed_binary_1)
+# cv.imwrite("results/HED2.png", hed_binary_2)
+# cv.imwrite("results/HED3.png", hed_binary_3)
+# cv.imwrite("results/HED4.png", hed_binary_4)
+# cv.imwrite("results/HED5.png", hed_binary_5)
+# cv.imwrite("results/RCF5.png", rcf_binary)
+# cv.imwrite("results/CATS5.png", cats_binary)
+# cv.imwrite("results/CANNY.png", edges_canny)
+
+
+
