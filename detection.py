@@ -11,14 +11,24 @@ from RCF.models import RCF
 from CATS.models import Network
 
 # filename = "test.png"
-filename = "images_gz2/images/700.jpg"
+filename = "images_gz2/images/2137.jpg"
 img_gray = cv.imread(filename, cv.IMREAD_GRAYSCALE)
+img_gray = cv.normalize(img_gray, None, 0, 255, cv.NORM_MINMAX)
+img_gray = cv.filter2D(img_gray, -1, np.ones((5,5),np.float32)/25)
 #ten sam, ale kolorowy dla heda
 img_color = cv.imread(filename)
 img_color = cv.filter2D(img_color, -1, np.ones((5,5),np.float32)/25)
 
 # Zwykły detektor Canny
-edges_canny = cv.Canny(img_gray, 20,100)
+def use_canny(sigma, img):
+    # v = np.median(img)
+    # # apply automatic Canny edge detection using the computed median
+    # lower = int(max(0, (1.0 - sigma) * v))
+    # upper = int(min(255, (1.0 + sigma) * v))
+    upper, thresh_im = cv.threshold(img, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+    lower = sigma*upper
+    edges_canny = cv.Canny(img, lower, upper)
+    return edges_canny
 
 #HED
 
@@ -182,48 +192,49 @@ def use_cats(model, img_name):
     edge_map = cv.normalize(edge_map, None, 0, 255, cv.NORM_MINMAX)
     return edge_map
 
-hed_model, hed_layers = init_hed()
-rcf_model = init_rcf()
-cats_model = init_cats()
+# hed_model, hed_layers = init_hed()
+# rcf_model = init_rcf()
+# cats_model = init_cats()
 
-hed = []
-hed = use_hed(hed_model, hed_layers, img_color)
-rcf = use_rcf(rcf_model, filename)
-cats = use_cats(cats_model, filename)
+# hed = []
+# hed = use_hed(hed_model, hed_layers, img_color)
+# rcf = use_rcf(rcf_model, filename)
+# cats = use_cats(cats_model, filename)
+canny = use_canny(0.5, img_gray)
 
 #Wyświetl wyniki, najpierw oryginał i trzy zaawansowane, później Canny oraz sprogowane trzy zaawansowane
 cv.imshow("Input", img_gray)
 
-cv.imshow("HED 0", hed[0])
-cv.imshow("HED 1", hed[1])
-cv.imshow("HED 2", hed[2])
-cv.imshow("HED 3", hed[3])
-cv.imshow("HED 4", hed[4])
-cv.imshow("HED 5", hed[5])
+# cv.imshow("HED 0", hed[0])
+# cv.imshow("HED 1", hed[1])
+# cv.imshow("HED 2", hed[2])
+# cv.imshow("HED 3", hed[3])
+# cv.imshow("HED 4", hed[4])
+# cv.imshow("HED 5", hed[5])
 
-cv.imshow("RCF", rcf)
-cv.imshow("CATS", cats)
-cv.waitKey(0)
+# cv.imshow("RCF", rcf)
+# cv.imshow("CATS", cats)
+# cv.waitKey(0)
 
-_, hed_binary_0 = cv.threshold(hed[0], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-_, hed_binary_1 = cv.threshold(hed[1], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-_, hed_binary_2 = cv.threshold(hed[2], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-_, hed_binary_3 = cv.threshold(hed[3], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-_, hed_binary_4 = cv.threshold(hed[4], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-_, hed_binary_5 = cv.threshold(hed[5], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+# _, hed_binary_0 = cv.threshold(hed[0], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+# _, hed_binary_1 = cv.threshold(hed[1], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+# _, hed_binary_2 = cv.threshold(hed[2], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+# _, hed_binary_3 = cv.threshold(hed[3], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+# _, hed_binary_4 = cv.threshold(hed[4], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+# _, hed_binary_5 = cv.threshold(hed[5], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
 
-_, rcf_binary = cv.threshold(rcf, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-_, cats_binary = cv.threshold(cats, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-cv.imshow("HED binary 0", hed_binary_0)
-cv.imshow("HED binary 1", hed_binary_1)
-cv.imshow("HED binary 2", hed_binary_2)
-cv.imshow("HED binary 3", hed_binary_3)
-cv.imshow("HED binary 4", hed_binary_4)
-cv.imshow("HED binary 5", hed_binary_5)
+# _, rcf_binary = cv.threshold(rcf, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+# _, cats_binary = cv.threshold(cats, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+# cv.imshow("HED binary 0", hed_binary_0)
+# cv.imshow("HED binary 1", hed_binary_1)
+# cv.imshow("HED binary 2", hed_binary_2)
+# cv.imshow("HED binary 3", hed_binary_3)
+# cv.imshow("HED binary 4", hed_binary_4)
+# cv.imshow("HED binary 5", hed_binary_5)
 
-cv.imshow("RCF binary", rcf_binary)
-cv.imshow("CATS binary", cats_binary)
-cv.imshow("Canny", edges_canny)
+# cv.imshow("RCF binary", rcf_binary)
+# cv.imshow("CATS binary", cats_binary)
+cv.imshow("Canny", canny)
 cv.waitKey(0)
 
 # cv.imwrite("results/HED0.png", hed_binary_0)
