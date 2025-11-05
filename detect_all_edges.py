@@ -21,11 +21,16 @@ def use_canny(sigma, filename):
     return edges_canny
 
 def save_photo(name, type):
+
     filename1 = "images_gz2/images/" + str(name) + ".jpg"
-    if(type):
-        filename2 = "test_data/canny/" + str(name) + ".jpg"
+    if(type==0):
+        filename2 = "canny/spiral/" + str(name) + ".jpg"
+    elif(type==1):
+        filename2 = "canny/elipse/" + str(name) + ".jpg"
+    elif(type==2):
+        filename2 = "canny/lens/" + str(name) + ".jpg"
     else:
-        filename2 = "train_data/canny/" + str(name) + ".jpg"
+        filename2 = "canny/irregular/" + str(name) + ".jpg"
     try:
         img = use_canny(0.01, filename1)
         cv.imwrite(filename2, img)
@@ -34,22 +39,14 @@ def save_photo(name, type):
         print("Couldn't save file: " + filename2)
 
 
-spirals = True
-elipses = True
-lens = True
-irregular = True
-
 for i in range(0,size):
     row = photo_df.iloc[i]
     if(row.iloc[1]==1 and row.iloc[3] == 0 and row.iloc[4]==0):
-        save_photo(row.iloc[0], spirals)
-        spirals = not spirals
+        save_photo(row.iloc[0], 0)
     elif(row.iloc[2]==1 and row.iloc[3]==0 and row.iloc[4] == 0):
-        save_photo(row.iloc[0], elipses)
-        elipses = not elipses
+        save_photo(row.iloc[0], 1)
     elif(row.iloc[2]==1 and row.iloc[3]==1 and row.iloc[4]==0):
-        save_photo(row.iloc[0], lens)
-        lens = not lens
+        save_photo(row.iloc[0], 2)
     elif(row.iloc[4]==1):
-        save_photo(row.iloc[0], irregular)
-        irregular = not irregular
+        save_photo(row.iloc[0], 3)
+    print(i)

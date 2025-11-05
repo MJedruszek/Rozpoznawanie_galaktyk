@@ -9,3 +9,7 @@ images_gz2.zip
 /test_data
 /train_data
 /.vscode
+/kagglecatsanddogs_5340
+/canny
+/__pycache__
+*.keras
